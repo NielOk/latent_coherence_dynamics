@@ -1,2 +1,2 @@
 # entropy_mapping
-Mapping token entropy to reveal generation dynamics of language models
+Mapping token entropy and logit concentration to reveal generation dynamics of language models
