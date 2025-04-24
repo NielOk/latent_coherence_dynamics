@@ -130,7 +130,13 @@ def main():
     input_ids = torch.tensor(input_ids).to(device).unsqueeze(0)
 
     collect_logits = True
-    out = generate_with_logits(model, input_ids, steps=128, gen_length=128, block_length=32, temperature=0.,
+    out, collected = generate_with_logits(model, input_ids, steps=128, gen_length=128, block_length=32, temperature=0.,
                    cfg_scale=0., remasking='low_confidence', collect_logits=collect_logits)
 
     print(tokenizer.batch_decode(out[:, input_ids.shape[1]:], skip_special_tokens=True)[0])
+
+    # Print logits
+    for i, entry in enumerate(collected):
+        print(f"Step {entry['step']}, Position {entry['position']}")
+        print(entry['logits'])  # shape: (vocab_size,)
+        print("-" * 40)
