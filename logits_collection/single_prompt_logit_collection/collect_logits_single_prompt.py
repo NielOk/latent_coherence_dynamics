@@ -54,7 +54,8 @@ def generate_with_logits(model, prompt, steps=128, gen_length=128, block_length=
     collected = []
 
     for num_block in range(num_blocks):
-        block_mask_index = (x[:, prompt.shape[1] + num_block * block_length: prompt.shape[1] + (num_block + 1) * block_length:] == mask_id)
+        block_mask_index = (x[:, prompt.shape[1] + num_block * block_length:
+                              prompt.shape[1] + (num_block + 1) * block_length:] == mask_id)
         num_transfer_tokens = get_num_transfer_tokens(block_mask_index, steps)
         for i in range(steps):
             mask_index = (x == mask_id)
@@ -66,17 +67,7 @@ def generate_with_logits(model, prompt, steps=128, gen_length=128, block_length=
                 logits, un_logits = torch.chunk(logits, 2, dim=0)
                 logits = un_logits + (cfg_scale + 1) * (logits - un_logits)
             else:
-                logits = model(x).logits
-
-            if collect_logits:
-                b, l, v = logits.shape
-                for pos in range(l):
-                    if mask_index[0, pos]:  # only collect masked positions
-                        collected.append({
-                            'logits': logits[0, pos].float().cpu(),  # (vocab_size,)
-                            'step': num_block * steps + i,
-                            'position': pos,
-                        })
+                logits = model(x).logits  # shape: (1, seq_len, vocab_size)
 
             logits_with_noise = add_gumbel_noise(logits, temperature=temperature)
             x0 = torch.argmax(logits_with_noise, dim=-1)
@@ -98,6 +89,13 @@ def generate_with_logits(model, prompt, steps=128, gen_length=128, block_length=
                 _, select_index = torch.topk(confidence[j], k=num_transfer_tokens[j, i])
                 transfer_index[j, select_index] = True
             x[transfer_index] = x0[transfer_index]
+
+            if collect_logits:
+                collected.append({
+                    'logits': logits[0].float().cpu(),      # shape: [seq_len, vocab_size]
+                    'tokens': x[0].clone().cpu(),           # shape: [seq_len]
+                    'step': num_block * steps + i
+                })
 
     return x, collected if collect_logits else x
 
@@ -130,13 +128,31 @@ def main():
     input_ids = torch.tensor(input_ids).to(device).unsqueeze(0)
 
     collect_logits = True
+    mask_id = 126336
     out, collected = generate_with_logits(model, input_ids, steps=128, gen_length=128, block_length=32, temperature=0.,
-                   cfg_scale=0., remasking='low_confidence', collect_logits=collect_logits)
+                   cfg_scale=0., remasking='low_confidence', collect_logits=collect_logits, mask_id=mask_id)
 
     print(tokenizer.batch_decode(out[:, input_ids.shape[1]:], skip_special_tokens=True)[0])
 
-    # Print logits
-    for i, entry in enumerate(collected):
-        print(f"Step {entry['step']}, Position {entry['position']}")
-        print(entry['logits'])  # shape: (vocab_size,)
-        print("-" * 40)
+    # Print decoded tokens and corresponding logits at each step
+    for entry in collected:
+        step = entry['step']
+        tokens = entry['tokens']         # shape: (seq_len,)
+        logits = entry['logits']         # shape: (seq_len, vocab_size)
+
+        print(f"\n===== Step {step} =====")
+        unmasked_indices = (tokens != mask_id).nonzero(as_tuple=True)[0]
+
+        if len(unmasked_indices) == 0:
+            print("No tokens unmasked yet.")
+            continue
+
+        for i in unmasked_indices:
+            token_id = tokens[i].item()
+            token_str = tokenizer.decode([token_id])
+            print(f"\nToken position {i} → '{token_str}' (ID: {token_id})")
+            print("Raw logits:")
+            print(logits[i])  # shape: (vocab_size,)
+
+if __name__ == '__main__':
+    main()
