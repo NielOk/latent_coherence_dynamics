@@ -1,3 +1,6 @@
 # Environment
 .venv/
 .env
+
+# Datasets
+logits_collection/single_prompt_dataset/single_prompt_collected_dataset

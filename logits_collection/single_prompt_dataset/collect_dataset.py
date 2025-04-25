@@ -136,20 +136,29 @@ def main():
     print(tokenizer.batch_decode(out[:, input_ids.shape[1]:], skip_special_tokens=True)[0])
 
     # Save directory
-    save_dir = "single_prompt_dataset"
+    save_dir = "single_prompt_collected_dataset"
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    # Save tokens and logits at each step
+    # Save tokens and top-k logits at each step
+    k = 64  # top-k sparsity level for interpretability
     for entry in collected:
         step = entry['step']
         tokens = entry['tokens']         # shape: (seq_len,)
         logits = entry['logits']         # shape: (seq_len, vocab_size)
 
+        # Get top-k per token position
+        topk_values, topk_indices = torch.topk(logits, k, dim=-1)  # shapes: (seq_len, k)
+
+        # Optional: convert to float16 to save space
+        topk_values = topk_values.half()
+
+        # Save step as a compact dict
         torch.save({
             'step': step,
-            'tokens': tokens,
-            'logits': logits
+            'tokens': tokens,               # still useful for masking later
+            'topk_values': topk_values,     # (seq_len, k)
+            'topk_indices': topk_indices    # (seq_len, k)
         }, os.path.join(save_dir, f'step_{step}.pt'))
 
 if __name__ == '__main__':
