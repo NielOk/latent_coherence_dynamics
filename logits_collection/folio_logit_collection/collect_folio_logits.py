@@ -166,7 +166,8 @@ def main():
     if not os.path.exists(overall_save_dir_name):
         os.makedirs(overall_save_dir_name)
 
-    # Collect logits
+    # Collect top-k logits at each step for each prompt
+    k = 64  # top-k sparsity level for interpretability
     for i in range(len(input_ids_list)):
 
         save_dir_name = f"prompt_id_{i}"
@@ -183,6 +184,21 @@ def main():
         input_ids = torch.tensor(input_ids_list[i]).to(device).unsqueeze(0)
         out, collected = generate_with_logits(model, input_ids, steps=128, gen_length=128, block_length=32, temperature=0., remasking='random', collect_logits=True)
 
-        
+        for entry in collected:
+            step = entry['step']
+            tokens = entry['tokens']    # shape: (seq_len,)
+            logits = entry['logits']    # shape: (seq_len, vocab_size)
 
+            # Get top-k per token position
+            topk_values, topk_indices = torch.topk(logits, k, dim=-1)  # shapes: (seq_len, k)
 
+            # Save step as a compact dict
+            torch.save({
+                'step': step,
+                'tokens': tokens,               # still useful for masking later
+                'topk_values': topk_values,     # (seq_len, k)
+                'topk_indices': topk_indices    # (seq_len, k)
+            }, os.path.join(save_dir, f'step_{step}.pt'))
+
+if __name__ == '__main__':
+    main()
