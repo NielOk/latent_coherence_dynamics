@@ -32,7 +32,7 @@ fi
 read -p "Would you like to install the requirements on the remote instance? (y/n): " install_requirements
 if [[ $install_requirements == "y" ]]; then
     echo "Installing requirements on remote instance..."
-    ssh -i "$private_ssh_key" "$remote_ssh_user@$remote_ssh_host" "pip install torch numpy transformers accelerate jinja2==3.1.0 datasets"
+    ssh -i "$private_ssh_key" "$remote_ssh_user@$remote_ssh_host" "pip install torch numpy transformers accelerate jinja2==3.1.0 datasets python-dotenv"
 
     ssh -i "$private_ssh_key" "$remote_ssh_user@$remote_ssh_host" "echo 'hugging_face_api_key=$HUGGINGFACE_API_KEY' >> '/home/$remote_ssh_user/.env'"
 else
@@ -44,7 +44,7 @@ read -p "Would you like to run the inference script on the remote instance? (y/n
 if [[ $run_inference == "y" ]]; then
 
     echo "Running inference script on remote instance for instruct model..."
-    ssh -i "$private_ssh_key" "$remote_ssh_user@$remote_ssh_host" "nohup python3 ~/$ARCHITECTURE_READ_SCRIPT_PATH > instruct_logits_measurement_output.log 2>&1 &" &
+    ssh -i "$private_ssh_key" "$remote_ssh_user@$remote_ssh_host" "nohup python3 ~/$ARCHITECTURE_READ_SCRIPT_PATH > instruct_model_architecture_read_output.log 2>&1 &" &
 else
     echo "Skipping inference script execution."
 fi
