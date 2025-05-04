@@ -32,7 +32,7 @@ fi
 read -p "Would you like to install the requirements on the remote instance? (y/n): " install_requirements
 if [[ $install_requirements == "y" ]]; then
     echo "Installing requirements on remote instance..."
-    ssh -i "$private_ssh_key" "$remote_ssh_user@$remote_ssh_host" "pip install torch numpy transformers accelerate jinja2==3.1.0 datasets python-dotenv"
+    ssh -i "$private_ssh_key" "$remote_ssh_user@$remote_ssh_host" "pip install torch numpy transformers accelerate jinja2==3.1.0 datasets python-dotenv huggingface_hub"
 
     ssh -i "$private_ssh_key" "$remote_ssh_user@$remote_ssh_host" "echo 'hugging_face_api_key=$HUGGINGFACE_API_KEY' >> '/home/$remote_ssh_user/.env'"
 else
