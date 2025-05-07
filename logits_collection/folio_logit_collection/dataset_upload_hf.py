@@ -1,3 +1,7 @@
+'''
+Once you run this, delete the `hf_ready_dataset` folder to save space.
+'''
+
 import os
 import torch
 from datasets import Dataset, DatasetDict, Features, Value, Array2D, Sequence, concatenate_datasets
